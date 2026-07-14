@@ -35,7 +35,12 @@ export interface FaceMatch {
 const FACE_THRESHOLD = 0.55;
 
 // مطابقة متجه وجه مع قاعدة الأشخاص (أقرب جار)
-export function matchFace(descriptor: Float32Array, people: Person[]): FaceMatch {
+// threshold: عتبة قابلة للضبط (أصغر = أدقّ وأصرم، أكبر = أوسع وأكثر تساهلاً)
+export function matchFace(
+  descriptor: Float32Array,
+  people: Person[],
+  threshold: number = FACE_THRESHOLD,
+): FaceMatch {
   let best: Person | null = null;
   let bestDist = Infinity;
 
@@ -49,11 +54,11 @@ export function matchFace(descriptor: Float32Array, people: Person[]): FaceMatch
     }
   }
 
-  if (!best || bestDist > FACE_THRESHOLD) {
+  if (!best || bestDist > threshold) {
     return { person: null, distance: bestDist, confidence: 0 };
   }
   // تحويل المسافة إلى ثقة تقريبية
-  const confidence = Math.max(0, Math.min(1, 1 - bestDist / FACE_THRESHOLD));
+  const confidence = Math.max(0, Math.min(1, 1 - bestDist / threshold));
   return { person: best, distance: bestDist, confidence };
 }
 
