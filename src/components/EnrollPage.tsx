@@ -3,9 +3,10 @@ import { useMediaStream } from '../hooks/useMediaStream';
 import { detectSingleFace, isFaceReady, loadFaceModels } from '../lib/face';
 import { bufferToFingerprint, recordAudio } from '../lib/voice';
 import { newId, savePerson, type Person } from '../lib/db';
+import { useI18n } from '../i18n';
 
-const MIN_FACE_SAMPLES = 1;
 const VOICE_SECONDS = 5;
+type Mode = 'camera' | 'photo';
 
 interface Props {
   onSaved: () => void;
@@ -13,9 +14,16 @@ interface Props {
 }
 
 export default function EnrollPage({ onSaved, toast }: Props) {
+  const { t } = useI18n();
   const videoRef = useRef<HTMLVideoElement>(null);
-  const { stream, error, active, start, stop } = useMediaStream({ video: true, audio: true });
+  const fileRef = useRef<HTMLInputElement>(null);
+  const { stream, error, active, facing, start, stop, flip } = useMediaStream({
+    video: true,
+    audio: true,
+    facingMode: 'user',
+  });
 
+  const [mode, setMode] = useState<Mode>('camera');
   const [modelsLoading, setModelsLoading] = useState(!isFaceReady());
   const [name, setName] = useState('');
   const [note, setNote] = useState('');
@@ -30,10 +38,8 @@ export default function EnrollPage({ onSaved, toast }: Props) {
   const [recProgress, setRecProgress] = useState(0);
 
   useEffect(() => {
-    loadFaceModels().then(() => setModelsLoading(false)).catch(() => {
-      toast('تعذّر تحميل نماذج التعرّف على الوجه');
-    });
-    start();
+    loadFaceModels().then(() => setModelsLoading(false)).catch(() => toast(t('loading_models')));
+    start('user');
     return () => stop();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -45,6 +51,27 @@ export default function EnrollPage({ onSaved, toast }: Props) {
     }
   }, [stream]);
 
+  function cropToThumb(
+    src: HTMLVideoElement | HTMLImageElement,
+    box: { x: number; y: number; width: number; height: number },
+    naturalW: number,
+    naturalH: number,
+  ): string {
+    const { x, y, width, height } = box;
+    const pad = 0.25;
+    const size = 160;
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d')!;
+    const sx = Math.max(0, x - width * pad);
+    const sy = Math.max(0, y - height * pad);
+    const sw = Math.min(naturalW - sx, width * (1 + pad * 2));
+    const sh = Math.min(naturalH - sy, height * (1 + pad * 2));
+    ctx.drawImage(src, sx, sy, sw, sh, 0, 0, size, size);
+    return canvas.toDataURL('image/jpeg', 0.85);
+  }
+
   async function captureFace() {
     const video = videoRef.current;
     if (!video || modelsLoading) return;
@@ -52,30 +79,47 @@ export default function EnrollPage({ onSaved, toast }: Props) {
     try {
       const face = await detectSingleFace(video);
       if (!face) {
-        toast('لم يتم اكتشاف وجه واضح. اقترب من الكاميرا.');
+        toast(t('enr_no_face'));
         return;
       }
-      // قص الوجه لصورة مصغّرة
-      const { x, y, width, height } = face.box;
-      const pad = 0.25;
-      const canvas = document.createElement('canvas');
-      const size = 128;
-      canvas.width = size;
-      canvas.height = size;
-      const ctx = canvas.getContext('2d')!;
-      const sx = Math.max(0, x - width * pad);
-      const sy = Math.max(0, y - height * pad);
-      const sw = Math.min(video.videoWidth - sx, width * (1 + pad * 2));
-      const sh = Math.min(video.videoHeight - sy, height * (1 + pad * 2));
-      ctx.drawImage(video, sx, sy, sw, sh, 0, 0, size, size);
-      const thumb = canvas.toDataURL('image/jpeg', 0.8);
-
+      const thumb = cropToThumb(video, face.box, video.videoWidth, video.videoHeight);
       setFaceDescriptors((d) => [...d, Array.from(face.descriptor)]);
-      setThumbs((t) => [...t, thumb]);
+      setThumbs((tt) => [...tt, thumb]);
       if (!photo) setPhoto(thumb);
-      toast('تم التقاط عيّنة الوجه ✓');
+      toast(t('enr_face_ok'));
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function handlePhotoFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (modelsLoading) {
+      toast(t('loading_models'));
+      return;
+    }
+    setBusy(true);
+    try {
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.src = url;
+      await img.decode().catch(() => new Promise((r) => (img.onload = r)));
+      const face = await detectSingleFace(img);
+      if (!face) {
+        toast(t('enr_no_face_photo'));
+        URL.revokeObjectURL(url);
+        return;
+      }
+      const thumb = cropToThumb(img, face.box, img.naturalWidth, img.naturalHeight);
+      URL.revokeObjectURL(url);
+      setFaceDescriptors((d) => [...d, Array.from(face.descriptor)]);
+      setThumbs((tt) => [...tt, thumb]);
+      if (!photo) setPhoto(thumb);
+      toast(t('enr_photo_ok'));
+    } finally {
+      setBusy(false);
+      if (fileRef.current) fileRef.current.value = '';
     }
   }
 
@@ -87,17 +131,13 @@ export default function EnrollPage({ onSaved, toast }: Props) {
       const buffer = await recordAudio(stream, VOICE_SECONDS * 1000, setRecProgress);
       const result = bufferToFingerprint(buffer);
       if (!result) {
-        toast('الصوت غير كافٍ. تحدّث بوضوح لمدة ' + VOICE_SECONDS + ' ثوانٍ.');
+        toast(t('enr_voice_insufficient'));
         return;
       }
       setVoicePrints((v) => [...v, result.fingerprint]);
-      if (result.voicedRatio < 0.3) {
-        toast('تم التسجيل لكن جودة الصوت منخفضة — تحدّث أعلى في مكان أهدأ.');
-      } else {
-        toast(`تم تسجيل بصمة الصوت ✓ (جودة ${Math.round(result.voicedRatio * 100)}%)`);
-      }
+      toast(result.voicedRatio < 0.3 ? t('enr_voice_low') : t('enr_voice_ok'));
     } catch (e: any) {
-      toast('تعذّر التسجيل: ' + (e?.message || ''));
+      toast('' + (e?.message || ''));
     } finally {
       setRecording(false);
       setRecProgress(0);
@@ -106,11 +146,11 @@ export default function EnrollPage({ onSaved, toast }: Props) {
 
   async function handleSave() {
     if (!name.trim()) {
-      toast('يرجى إدخال الاسم');
+      toast(t('enr_need_name'));
       return;
     }
-    if (faceDescriptors.length < MIN_FACE_SAMPLES && voicePrints.length === 0) {
-      toast('التقط عيّنة وجه واحدة على الأقل أو سجّل الصوت');
+    if (faceDescriptors.length === 0 && voicePrints.length === 0) {
+      toast(t('enr_need_data'));
       return;
     }
     const now = Date.now();
@@ -125,8 +165,7 @@ export default function EnrollPage({ onSaved, toast }: Props) {
       voicePrints,
     };
     await savePerson(person);
-    toast('تم حفظ الشخص: ' + person.name);
-    // إعادة التهيئة
+    toast(t('enr_saved') + person.name);
     setName('');
     setNote('');
     setFaceDescriptors([]);
@@ -138,29 +177,63 @@ export default function EnrollPage({ onSaved, toast }: Props) {
 
   return (
     <div>
-      <h2 className="section">➕ تسجيل شخص جديد</h2>
+      <h2 className="section">➕ {t('enr_title')}</h2>
+
+      {/* اختيار طريقة إدخال الوجه */}
+      <div className="seg">
+        <button className={mode === 'camera' ? 'active' : ''} onClick={() => setMode('camera')}>
+          📷 {t('enr_mode_camera')}
+        </button>
+        <button className={mode === 'photo' ? 'active' : ''} onClick={() => setMode('photo')}>
+          🪪 {t('enr_mode_photo')}
+        </button>
+      </div>
 
       <div className="card">
-        <div className="video-wrap">
-          <video ref={videoRef} autoPlay playsInline muted />
-          {(modelsLoading || !active) && (
-            <div className="loading-overlay">
-              <div className="spinner" />
-              <span>{modelsLoading ? 'جارٍ تحميل نماذج الوجه…' : 'جارٍ تشغيل الكاميرا…'}</span>
+        {mode === 'camera' ? (
+          <>
+            <div className="video-wrap">
+              <video ref={videoRef} autoPlay playsInline muted className={facing === 'user' ? 'mirror' : ''} />
+              {(modelsLoading || !active) && (
+                <div className="loading-overlay">
+                  <div className="spinner" />
+                  <span>{modelsLoading ? t('loading_models') : t('loading_camera')}</span>
+                </div>
+              )}
             </div>
-          )}
-        </div>
-        {error && <p className="muted" style={{ color: 'var(--danger)' }}>{error}</p>}
+            {error && <p className="muted" style={{ color: 'var(--danger)' }}>{error}</p>}
+            <div className="row" style={{ marginTop: 12 }}>
+              <button className="btn green" onClick={captureFace} disabled={busy || modelsLoading || !active}>
+                📸 {t('enr_capture_face')}
+              </button>
+              <button className="btn secondary" onClick={() => flip()} disabled={!active}>
+                🔄 {facing === 'user' ? t('rec_front') : t('rec_back')}
+              </button>
+            </div>
+          </>
+        ) : (
+          <div className="photo-enroll">
+            <p className="muted">{t('enr_photo_hint')}</p>
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              style={{ display: 'none' }}
+              onChange={handlePhotoFile}
+            />
+            <button className="btn green block" onClick={() => fileRef.current?.click()} disabled={busy || modelsLoading}>
+              🪪 {t('enr_from_photo')}
+            </button>
+          </div>
+        )}
 
+        {/* الصوت (مشترك) */}
         <div className="row" style={{ marginTop: 12 }}>
-          <button className="btn green" onClick={captureFace} disabled={busy || modelsLoading || !active}>
-            📸 التقاط عيّنة وجه
-          </button>
           <button className="btn secondary" onClick={captureVoice} disabled={recording || !active}>
-            {recording ? `🎙️ يسجّل… ${Math.round(recProgress * 100)}%` : '🎙️ تسجيل الصوت'}
+            {recording ? `🎙️ ${t('enr_recording')} ${Math.round(recProgress * 100)}%` : `🎙️ ${t('enr_record_voice')}`}
           </button>
         </div>
-
         {recording && (
           <div className="progress" style={{ marginTop: 10 }}>
             <div style={{ width: `${recProgress * 100}%` }} />
@@ -169,43 +242,30 @@ export default function EnrollPage({ onSaved, toast }: Props) {
 
         <div className="row" style={{ marginTop: 12, gap: 8 }}>
           <span className={`pill ${faceDescriptors.length ? 'ok' : 'no'}`}>
-            👤 عيّنات الوجه: {faceDescriptors.length}
+            👤 {t('enr_face_samples')}: {faceDescriptors.length}
           </span>
           <span className={`pill ${voicePrints.length ? 'ok' : 'no'}`}>
-            🔊 بصمات الصوت: {voicePrints.length}
+            🔊 {t('enr_voice_prints')}: {voicePrints.length}
           </span>
         </div>
 
         {thumbs.length > 0 && (
           <div className="samples">
-            {thumbs.map((t, i) => (
-              <img key={i} src={t} alt={`عينة ${i + 1}`} />
+            {thumbs.map((tb, i) => (
+              <img key={i} src={tb} alt={`${i + 1}`} />
             ))}
           </div>
         )}
-        <p className="muted" style={{ marginTop: 10 }}>
-          نصيحة: التقط 3–5 عيّنات وجه بزوايا وإضاءات مختلفة، وسجّل بصمة الصوت 2–3 مرات
-          بجُمل مختلفة في مكان هادئ — كلما زادت العيّنات ارتفعت الدقة في التمييز بين الأشخاص.
-        </p>
+        <p className="muted" style={{ marginTop: 10 }}>{t('enr_tip')}</p>
       </div>
 
       <div className="card">
-        <label className="lbl">الاسم *</label>
-        <input
-          className="field"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="مثال: أحمد محمد"
-        />
-        <label className="lbl">ملاحظة (اختياري)</label>
-        <input
-          className="field"
-          value={note}
-          onChange={(e) => setNote(e.target.value)}
-          placeholder="مثال: قسم المبيعات"
-        />
+        <label className="lbl">{t('enr_name')} *</label>
+        <input className="field" value={name} onChange={(e) => setName(e.target.value)} placeholder={t('enr_name_ph')} />
+        <label className="lbl">{t('enr_note')}</label>
+        <input className="field" value={note} onChange={(e) => setNote(e.target.value)} placeholder={t('enr_note_ph')} />
         <button className="btn block" style={{ marginTop: 16 }} onClick={handleSave} disabled={busy}>
-          💾 حفظ الشخص
+          💾 {t('enr_save')}
         </button>
       </div>
     </div>

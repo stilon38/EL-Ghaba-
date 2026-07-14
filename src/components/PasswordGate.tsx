@@ -1,13 +1,15 @@
 import { useState, type ReactNode } from 'react';
 import { APP_PASSWORD, UNLOCK_KEY } from '../config';
+import { useI18n } from '../i18n';
+import LangSwitcher from './LangSwitcher';
 
 interface Props {
   children: ReactNode;
 }
 
 // بوابة كلمة مرور بسيطة على مستوى المتصفح.
-// تمنع فتح التطبيق دون كلمة المرور، وتتذكّر الفتح طوال الجلسة.
 export default function PasswordGate({ children }: Props) {
+  const { t } = useI18n();
   const [unlocked, setUnlocked] = useState(
     () => sessionStorage.getItem(UNLOCK_KEY) === '1',
   );
@@ -30,28 +32,26 @@ export default function PasswordGate({ children }: Props) {
   return (
     <div className="gate">
       <form className="gate-card" onSubmit={submit}>
-        <img className="gate-logo" src="./favicon.svg" alt="شعار" />
-        <h1>الغابة</h1>
-        <p className="muted">التعرّف على الأشخاص · تطبيق خاص</p>
+        <img className="gate-logo" src="./favicon.svg" alt="" />
+        <h1>{t('appName')}</h1>
+        <p className="muted">{t('gate_subtitle')}</p>
         <input
           className="field"
           type="password"
-          inputMode="text"
           autoFocus
           value={value}
           onChange={(e) => {
             setValue(e.target.value);
             setError(false);
           }}
-          placeholder="أدخل كلمة المرور"
+          placeholder={t('gate_placeholder')}
         />
-        {error && <p className="gate-error">كلمة المرور غير صحيحة</p>}
-        <button className="btn block" type="submit">
-          دخول
-        </button>
-        <p className="muted gate-note">
-          بياناتك (الوجوه والأصوات) تبقى على جهازك فقط ولا تُرفع لأي خادم.
-        </p>
+        {error && <p className="gate-error">{t('gate_wrong')}</p>}
+        <button className="btn block" type="submit">{t('gate_enter')}</button>
+        <div style={{ marginTop: 16 }}>
+          <LangSwitcher />
+        </div>
+        <p className="muted gate-note">{t('gate_privacy')}</p>
       </form>
     </div>
   );

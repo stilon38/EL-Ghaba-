@@ -110,8 +110,16 @@ nav.tabs button.active {
   height: 100%;
   object-fit: cover;
 }
-.video-wrap video { transform: scaleX(-1); }
-.video-wrap canvas { transform: scaleX(-1); }
+/* المرآة للكاميرا الأمامية فقط؛ الكانفس يُدار في JS */
+.video-wrap video.mirror { transform: scaleX(-1); }
+.video-wrap.target-lock {
+  box-shadow: 0 0 0 2px var(--accent-2), 0 0 30px rgba(61, 255, 136, 0.5);
+  animation: lockpulse 1s ease-in-out infinite;
+}
+@keyframes lockpulse {
+  0%, 100% { box-shadow: 0 0 0 2px var(--accent-2), 0 0 20px rgba(61,255,136,.35); }
+  50% { box-shadow: 0 0 0 3px var(--accent-2), 0 0 40px rgba(61,255,136,.7); }
+}
 
 button.btn {
   background: var(--accent);
@@ -159,12 +167,11 @@ label.lbl { display: block; font-size: 13px; color: var(--muted); margin: 12px 0
 .samples img {
   width: 64px; height: 64px; border-radius: 10px; object-fit: cover;
   border: 2px solid var(--accent-2);
-  transform: scaleX(-1);
 }
 
 .people-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
 .person-card { background: var(--bg); border: 1px solid var(--border); border-radius: 12px; padding: 12px; text-align: center; }
-.person-card img { width: 80px; height: 80px; border-radius: 50%; object-fit: cover; margin-bottom: 8px; transform: scaleX(-1); }
+.person-card img { width: 80px; height: 80px; border-radius: 50%; object-fit: cover; margin-bottom: 8px; }
 .person-card .name { font-weight: 700; font-size: 15px; }
 .person-card .meta { font-size: 11px; color: var(--muted); margin: 4px 0 10px; }
 
@@ -175,12 +182,34 @@ label.lbl { display: block; font-size: 13px; color: var(--muted); margin: 12px 0
 }
 .match-banner.hit { border-color: var(--accent-2); background: rgba(52, 211, 153, 0.08); }
 .match-banner.miss { border-color: var(--warn); }
-.match-banner img { width: 54px; height: 54px; border-radius: 50%; object-fit: cover; transform: scaleX(-1); }
+.match-banner img { width: 54px; height: 54px; border-radius: 50%; object-fit: cover; }
 .match-banner .big { font-size: 18px; font-weight: 800; }
 .match-banner .sub { font-size: 12px; color: var(--muted); }
 
 .progress { height: 8px; background: var(--bg); border-radius: 999px; overflow: hidden; border: 1px solid var(--border); }
 .progress > div { height: 100%; background: var(--accent); transition: width .1s linear; }
+
+/* مبدّل اللغة */
+.lang-switch { display: inline-flex; gap: 2px; background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 3px; }
+.lang-switch button {
+  background: transparent; border: none; color: var(--muted);
+  font-size: 12px; font-weight: 700; padding: 5px 9px; border-radius: 8px; cursor: pointer;
+}
+.lang-switch button.active { background: var(--accent); color: #06222b; }
+
+/* أزرار اختيار الوضع (كاميرا/صورة) */
+.seg { display: flex; gap: 4px; background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 4px; margin-bottom: 16px; }
+.seg button {
+  flex: 1; background: transparent; border: none; color: var(--muted);
+  font-size: 14px; font-weight: 700; padding: 10px; border-radius: 9px; cursor: pointer;
+}
+.seg button.active { background: var(--accent); color: #06222b; }
+
+.person-noimg {
+  width: 80px; height: 80px; border-radius: 50%; background: var(--bg-2);
+  margin: 0 auto 8px; display: flex; align-items: center; justify-content: center; font-size: 30px;
+}
+.photo-enroll { padding: 8px 0; }
 
 .muted { color: var(--muted); font-size: 13px; }
 .center { text-align: center; }
