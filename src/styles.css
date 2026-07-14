@@ -1,0 +1,207 @@
+:root {
+  --bg: #0f172a;
+  --bg-2: #1e293b;
+  --card: #1e293b;
+  --border: #334155;
+  --text: #e2e8f0;
+  --muted: #94a3b8;
+  --accent: #22d3ee;
+  --accent-2: #34d399;
+  --danger: #f87171;
+  --warn: #fbbf24;
+  --radius: 14px;
+  font-family: -apple-system, "Segoe UI", Tahoma, "Noto Sans Arabic", Arial, sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+html, body, #root {
+  margin: 0;
+  min-height: 100%;
+  background: var(--bg);
+  color: var(--text);
+}
+
+body {
+  background: radial-gradient(1200px 600px at 50% -10%, #16324a 0%, var(--bg) 55%);
+}
+
+.app {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 16px 16px 96px;
+}
+
+header.top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 4px 20px;
+}
+header.top .logo {
+  width: 42px; height: 42px;
+}
+header.top h1 {
+  font-size: 20px;
+  margin: 0;
+  font-weight: 800;
+}
+header.top p {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* شريط التبويب السفلي */
+nav.tabs {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  display: flex;
+  justify-content: center;
+  gap: 4px;
+  background: rgba(15, 23, 42, 0.92);
+  backdrop-filter: blur(10px);
+  border-top: 1px solid var(--border);
+  padding: 8px 8px calc(8px + env(safe-area-inset-bottom));
+  z-index: 50;
+}
+nav.tabs button {
+  flex: 1;
+  max-width: 160px;
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 8px 4px;
+  border-radius: 10px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+nav.tabs button .ico { font-size: 20px; line-height: 1; }
+nav.tabs button.active {
+  color: var(--accent);
+  background: rgba(34, 211, 238, 0.1);
+}
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.video-wrap {
+  position: relative;
+  width: 100%;
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: #000;
+  aspect-ratio: 4 / 3;
+}
+.video-wrap video, .video-wrap canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.video-wrap video { transform: scaleX(-1); }
+.video-wrap canvas { transform: scaleX(-1); }
+
+button.btn {
+  background: var(--accent);
+  color: #06222b;
+  border: none;
+  border-radius: 10px;
+  padding: 12px 18px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: filter .15s;
+}
+button.btn:hover { filter: brightness(1.05); }
+button.btn:disabled { opacity: .5; cursor: not-allowed; }
+button.btn.secondary { background: var(--bg-2); color: var(--text); border: 1px solid var(--border); }
+button.btn.danger { background: transparent; color: var(--danger); border: 1px solid var(--danger); }
+button.btn.green { background: var(--accent-2); color: #052e22; }
+button.btn.block { width: 100%; }
+
+.row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.row.between { justify-content: space-between; }
+
+input.field, textarea.field {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text);
+  padding: 12px;
+  font-size: 15px;
+  font-family: inherit;
+}
+label.lbl { display: block; font-size: 13px; color: var(--muted); margin: 12px 0 6px; }
+
+.pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 10px; border-radius: 999px;
+  font-size: 12px; font-weight: 600;
+  background: var(--bg); border: 1px solid var(--border);
+}
+.pill.ok { color: var(--accent-2); border-color: var(--accent-2); }
+.pill.no { color: var(--muted); }
+
+.samples { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+.samples img {
+  width: 64px; height: 64px; border-radius: 10px; object-fit: cover;
+  border: 2px solid var(--accent-2);
+  transform: scaleX(-1);
+}
+
+.people-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+.person-card { background: var(--bg); border: 1px solid var(--border); border-radius: 12px; padding: 12px; text-align: center; }
+.person-card img { width: 80px; height: 80px; border-radius: 50%; object-fit: cover; margin-bottom: 8px; transform: scaleX(-1); }
+.person-card .name { font-weight: 700; font-size: 15px; }
+.person-card .meta { font-size: 11px; color: var(--muted); margin: 4px 0 10px; }
+
+.match-banner {
+  display: flex; align-items: center; gap: 14px;
+  padding: 14px; border-radius: 12px; margin-bottom: 12px;
+  border: 1px solid var(--border); background: var(--bg);
+}
+.match-banner.hit { border-color: var(--accent-2); background: rgba(52, 211, 153, 0.08); }
+.match-banner.miss { border-color: var(--warn); }
+.match-banner img { width: 54px; height: 54px; border-radius: 50%; object-fit: cover; transform: scaleX(-1); }
+.match-banner .big { font-size: 18px; font-weight: 800; }
+.match-banner .sub { font-size: 12px; color: var(--muted); }
+
+.progress { height: 8px; background: var(--bg); border-radius: 999px; overflow: hidden; border: 1px solid var(--border); }
+.progress > div { height: 100%; background: var(--accent); transition: width .1s linear; }
+
+.muted { color: var(--muted); font-size: 13px; }
+.center { text-align: center; }
+h2.section { font-size: 16px; margin: 0 0 12px; }
+.empty { text-align: center; color: var(--muted); padding: 40px 12px; }
+
+.toast {
+  position: fixed; top: 16px; left: 50%; transform: translateX(-50%);
+  background: var(--bg-2); border: 1px solid var(--border);
+  padding: 10px 18px; border-radius: 10px; z-index: 100;
+  font-size: 14px; box-shadow: 0 10px 30px rgba(0,0,0,.4);
+}
+
+.loading-overlay {
+  position: absolute; inset: 0; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 12px;
+  background: rgba(0,0,0,.6); color: var(--text); font-size: 14px;
+}
+.spinner {
+  width: 34px; height: 34px; border: 3px solid var(--border);
+  border-top-color: var(--accent); border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
