@@ -5,7 +5,7 @@ import { bufferToFingerprint, recordAudio } from '../lib/voice';
 import { newId, savePerson, type Person } from '../lib/db';
 
 const MIN_FACE_SAMPLES = 1;
-const VOICE_SECONDS = 4;
+const VOICE_SECONDS = 5;
 
 interface Props {
   onSaved: () => void;
@@ -91,7 +91,11 @@ export default function EnrollPage({ onSaved, toast }: Props) {
         return;
       }
       setVoicePrints((v) => [...v, result.fingerprint]);
-      toast(`تم تسجيل بصمة الصوت ✓ (${result.frames} إطار)`);
+      if (result.voicedRatio < 0.3) {
+        toast('تم التسجيل لكن جودة الصوت منخفضة — تحدّث أعلى في مكان أهدأ.');
+      } else {
+        toast(`تم تسجيل بصمة الصوت ✓ (جودة ${Math.round(result.voicedRatio * 100)}%)`);
+      }
     } catch (e: any) {
       toast('تعذّر التسجيل: ' + (e?.message || ''));
     } finally {
@@ -180,7 +184,8 @@ export default function EnrollPage({ onSaved, toast }: Props) {
           </div>
         )}
         <p className="muted" style={{ marginTop: 10 }}>
-          نصيحة: التقط 3–5 عيّنات وجه بزوايا وإضاءات مختلفة لدقة أعلى.
+          نصيحة: التقط 3–5 عيّنات وجه بزوايا وإضاءات مختلفة، وسجّل بصمة الصوت 2–3 مرات
+          بجُمل مختلفة في مكان هادئ — كلما زادت العيّنات ارتفعت الدقة في التمييز بين الأشخاص.
         </p>
       </div>
 

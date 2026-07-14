@@ -2,10 +2,10 @@ import { useEffect, useRef, useState } from 'react';
 import { useMediaStream } from '../hooks/useMediaStream';
 import { detectAllFaces, isFaceReady, loadFaceModels } from '../lib/face';
 import { bufferToFingerprint, recordAudio } from '../lib/voice';
-import { matchFace, matchVoice } from '../lib/match';
+import { matchFace, matchVoice, type VoiceCandidate } from '../lib/match';
 import { getAllPeople, type Person } from '../lib/db';
 
-const VOICE_SECONDS = 4;
+const VOICE_SECONDS = 5;
 
 interface Props {
   toast: (m: string) => void;
@@ -31,7 +31,11 @@ export default function RecognizePage({ toast }: Props) {
 
   const [voiceBusy, setVoiceBusy] = useState(false);
   const [voiceProgress, setVoiceProgress] = useState(0);
-  const [voiceResult, setVoiceResult] = useState<{ person: Person | null; confidence: number } | null>(null);
+  const [voiceResult, setVoiceResult] = useState<{
+    person: Person | null;
+    confidence: number;
+    candidates: VoiceCandidate[];
+  } | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -147,7 +151,7 @@ export default function RecognizePage({ toast }: Props) {
         return;
       }
       const m = matchVoice(fp.fingerprint, peopleRef.current);
-      setVoiceResult({ person: m.person, confidence: m.confidence });
+      setVoiceResult({ person: m.person, confidence: m.confidence, candidates: m.candidates });
     } catch (e: any) {
       toast('خطأ في التسجيل: ' + (e?.message || ''));
     } finally {
@@ -190,19 +194,42 @@ export default function RecognizePage({ toast }: Props) {
       <div className="card">
         <h2 className="section">🎙️ التعرّف بالصوت</h2>
         {voiceResult && (
-          <div className={`match-banner ${voiceResult.person ? 'hit' : 'miss'}`}>
-            {voiceResult.person?.photo && <img src={voiceResult.person.photo} alt="" />}
-            <div>
-              <div className="big">
-                {voiceResult.person ? voiceResult.person.name : 'صوت غير معروف'}
-              </div>
-              <div className="sub">
-                {voiceResult.person
-                  ? `الثقة: ${Math.round(voiceResult.confidence * 100)}%`
-                  : 'لا يوجد تطابق ضمن العتبة'}
+          <>
+            <div className={`match-banner ${voiceResult.person ? 'hit' : 'miss'}`}>
+              {voiceResult.person?.photo && <img src={voiceResult.person.photo} alt="" />}
+              <div>
+                <div className="big">
+                  {voiceResult.person ? voiceResult.person.name : 'صوت غير معروف'}
+                </div>
+                <div className="sub">
+                  {voiceResult.person
+                    ? `الثقة: ${Math.round(voiceResult.confidence * 100)}%`
+                    : 'لا يوجد تطابق واثق ضمن العتبة'}
+                </div>
               </div>
             </div>
-          </div>
+            {voiceResult.candidates.length > 0 && (
+              <div style={{ marginBottom: 10 }}>
+                <div className="muted" style={{ marginBottom: 6 }}>أقرب المرشّحين:</div>
+                {voiceResult.candidates.map((c, i) => {
+                  const pct = Math.round(Math.max(0, Math.min(1, (c.similarity + 1) / 2)) * 100);
+                  return (
+                    <div key={c.person.id} style={{ marginBottom: 6 }}>
+                      <div className="row between" style={{ marginBottom: 2 }}>
+                        <span style={{ fontSize: 13 }}>
+                          {i + 1}. {c.person.name}
+                        </span>
+                        <span className="muted" style={{ fontSize: 12 }}>{pct}%</span>
+                      </div>
+                      <div className="progress">
+                        <div style={{ width: `${pct}%`, background: i === 0 ? 'var(--accent-2)' : 'var(--border)' }} />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </>
         )}
         <button className="btn secondary block" onClick={listenVoice} disabled={voiceBusy || !active}>
           {voiceBusy ? `🎙️ يستمع… ${Math.round(voiceProgress * 100)}%` : `🎙️ استمع وتعرّف (${VOICE_SECONDS} ث)`}
