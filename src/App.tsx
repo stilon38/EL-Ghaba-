@@ -2,10 +2,19 @@ import { useCallback, useRef, useState } from 'react';
 import RecognizePage from './components/RecognizePage';
 import EnrollPage from './components/EnrollPage';
 import PeoplePage from './components/PeoplePage';
+import PasswordGate from './components/PasswordGate';
 
 type Tab = 'recognize' | 'enroll' | 'people';
 
 export default function App() {
+  return (
+    <PasswordGate>
+      <MainApp />
+    </PasswordGate>
+  );
+}
+
+function MainApp() {
   const [tab, setTab] = useState<Tab>('recognize');
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);

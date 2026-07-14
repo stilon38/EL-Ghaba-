@@ -11,3 +11,5 @@ yarn-error.log*
 
 # TypeScript build info
 *.tsbuildinfo
+
+el-ghaba-app.zip
