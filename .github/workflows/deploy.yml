@@ -1,0 +1,56 @@
+name: نشر التطبيق على GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+      - claude/person-recognition-camera-audio-vvi68a
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# نسمح بنشر واحد في كل مرة
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: جلب الكود
+        uses: actions/checkout@v4
+
+      - name: تهيئة Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: تثبيت الاعتماديات
+        run: npm ci
+
+      - name: بناء التطبيق
+        run: npm run build
+
+      - name: تجهيز صفحة Pages
+        uses: actions/configure-pages@v5
+
+      - name: رفع ملفات البناء
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: النشر على GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
